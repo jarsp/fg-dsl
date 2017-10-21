@@ -1,0 +1,9 @@
+module easy
+
+factor f(a, b) = a + 5 * b + 2 ^ (3 + a);
+factor g(a, b, c) = 2 ^ ((1 - a) * (1 - b)) + b * c + a * (5 - c);
+
+app f(x, y);
+app f(y, z);
+app g(w, x, z);
+app g(y, z, w);
