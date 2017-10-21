@@ -1,0 +1,9 @@
+gurobi.log
+*.bak
+__pycache__
+.mypy_cache
+parser/*.tokens
+parser/FGLexer.py
+parser/FGParser.py
+parser/FGListener.py
+parser/FGVisitor.py
