@@ -41,6 +41,18 @@ fact_app
    ;
 
 expression
+   : xorTerm (OR xorTerm)*
+   ;
+
+xorTerm
+   : andTerm (XOR andTerm)*
+   ;
+
+andTerm
+   : logicTerm (AND logicTerm)*
+   ;
+
+logicTerm
    : term ((PLUS | MINUS) term)*
    ;
 
@@ -55,7 +67,7 @@ factor
 signedAtom
    : PLUS signedAtom
    | MINUS signedAtom
-   | atom
+   | (NOT)* atom
    ;
 
 atom
@@ -142,12 +154,28 @@ EQ
    : '='
    ;
 
-POINT
-   : '.'
+POW
+   : '**'
    ;
 
-POW
+NOT
+   : '~'
+   ;
+
+AND
+   : '&'
+   ;
+
+XOR
    : '^'
+   ;
+
+OR
+   : '|'
+   ;
+
+POINT
+   : '.'
    ;
 
 COMMA

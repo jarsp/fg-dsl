@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Callable, List
 
 import sys
 
@@ -11,6 +11,15 @@ from .ast import *
 
 class FGTreeParse(FGVisitor):
     __expr_ops = {
+        '|': 'or'
+    }
+    __xorterm_ops = {
+        '^': 'xor'
+    }
+    __andterm_ops = {
+        '&': 'and'
+    }
+    __logicterm_ops = {
         '+': 'add',
         '-': 'sub',
     }
@@ -19,11 +28,32 @@ class FGTreeParse(FGVisitor):
         '/': 'div',
     }
     __factor_ops = {
-        '^': 'pow',
+        '**': 'pow',
     }
     __signed_ops = {
         '-': 'neg',
+        '~': 'not'
     }
+
+    def parse_binop(self, ctx:ParserRuleContext, ops_dict,
+                    visitNext:Callable[[ParserRuleContext], FGExp],
+                    following:List[ParserRuleContext],
+                    assoc:str ='l') -> FGExp:
+        ops = [ops_dict[o.getText()] \
+                for i, o in enumerate(ctx.getChildren()) \
+                if i % 2 == 1]
+        args = list(map(visitNext, following))
+        if assoc == 'l':
+            ret = args[0]
+            for o, a in zip(ops, args[1:]):
+                ret = FGOp(o, [ret, a])
+        elif assoc == 'r':
+            ret = args[-1]
+            for o, a in zip(reversed(ops), reversed(args[:-1])):
+                ret = FGOp(o, [a, ret])
+        else:
+            raise Exception('Unknown associativity: {}'.format(assoc))
+        return FGExp(ret)
 
     # Visit a parse tree produced by FGParser#module.
     def visitModule(self, ctx:FGParser.ModuleContext) -> FGModule:
@@ -36,7 +66,7 @@ class FGTreeParse(FGVisitor):
     def visitFact_def(self, ctx:FGParser.Fact_defContext) -> Tuple[str, FGDef]:
         name = ctx.variable(0).getText()
         params = list(map(self.visitVariable, ctx.variable()[1:]))
-        exp = self.visitExpression(ctx.expression())
+        exp = FGExp(self.visitExpression(ctx.expression()))
         return (name, FGDef(name, params, exp))
 
     # Visit a parse tree produced by FGParser#fact_app.
@@ -47,38 +77,34 @@ class FGTreeParse(FGVisitor):
 
     # Visit a parse tree produced by FGParser#expression.
     def visitExpression(self, ctx:FGParser.ExpressionContext) -> FGExp:
-        # NOTE: A bit fragile? Same as the below
-        ops = [self.__expr_ops[o.getText()] \
-                for i, o in enumerate(ctx.getChildren()) \
-                if i % 2 == 1]
-        args = list(map(self.visitTerm, ctx.term()))
-        ret = args[0]
-        for o, a in zip(ops, args[1:]):
-            ret = FGOp(o, [ret, a])
-        return FGExp(ret)
+        return self.parse_binop(ctx, self.__expr_ops,
+                                self.visitXorTerm, ctx.xorTerm())
+
+    # Visit a parse tree produced by FGParser#xorTerm.
+    def visitXorTerm(self, ctx:FGParser.XorTermContext) -> FGExp:
+        return self.parse_binop(ctx, self.__xorterm_ops,
+                                self.visitAndTerm, ctx.andTerm())
+
+    # Visit a parse tree produced by FGParser#andTerm.
+    def visitAndTerm(self, ctx:FGParser.AndTermContext) -> FGExp:
+        return self.parse_binop(ctx, self.__andterm_ops,
+                                self.visitLogicTerm, ctx.logicTerm())
+
+    # Visit a parse tree produced by FGParser#logicTerm.
+    def visitLogicTerm(self, ctx:FGParser.LogicTermContext) -> FGExp:
+        return self.parse_binop(ctx, self.__logicterm_ops,
+                                self.visitTerm, ctx.term())
 
     # Visit a parse tree produced by FGParser#term.
     def visitTerm(self, ctx:FGParser.TermContext) -> FGExp:
-        ops = [self.__term_ops[o.getText()] \
-                for i, o in enumerate(ctx.getChildren()) \
-                if i % 2 == 1]
-        args = list(map(self.visitFactor, ctx.factor()))
-        ret = args[0]
-        for o, a in zip(ops, args[1:]):
-            ret = FGOp(o, [ret, a])
-        return ret
+        return self.parse_binop(ctx, self.__term_ops,
+                                self.visitFactor, ctx.factor())
 
     # Visit a parse tree produced by FGParser#factor.
     def visitFactor(self, ctx:FGParser.FactorContext) -> FGExp:
-        ops = [self.__factor_ops[o.getText()] \
-                for i, o in enumerate(ctx.getChildren()) \
-                if i % 2 == 1]
-        args = list(map(self.visitSignedAtom, ctx.signedAtom()))
-        # Folding right
-        ret = args[-1]
-        for o, a in zip(reversed(ops), reversed(args[:-1])):
-            ret = FGOp(o, [a, ret])
-        return ret
+        return self.parse_binop(ctx, self.__factor_ops,
+                                self.visitSignedAtom, ctx.signedAtom(),
+                                assoc='r')
 
     # Visit a parse tree produced by FGParser#signedAtom.
     def visitSignedAtom(self, ctx:FGParser.SignedAtomContext) -> FGExp:
@@ -87,7 +113,9 @@ class FGTreeParse(FGVisitor):
         while cur.signedAtom() != None:
             if cur.MINUS() != None: pos = not pos
             cur = cur.signedAtom()
+        hasNot = len(cur.NOT()) % 2 == 1
         res = self.visitAtom(cur.atom())
+        if hasNot: res = FGOp('not', [res])
         if pos: return res
         else: return FGOp('neg', [res])
 

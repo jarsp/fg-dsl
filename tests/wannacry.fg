@@ -1,0 +1,46 @@
+module wannacry
+
+factor f(inf) = 0.6 * inf + 0.4 * ~inf;
+factor g(inf, scan) = 0.1 * (~inf & ~scan) +
+                      0.3 * (~inf & scan) +
+                      0.1 * (inf & ~scan) +
+                      0.5 * (inf & scan);
+factor h(inf, trans) = 0.2 * (~inf & ~trans) +
+                       0.2 * (~inf & trans) +
+                       0.1 * (inf & ~trans) +
+                       0.5 * (inf & trans);
+factor i(scan, trans) = 0.15 * (~scan & ~trans) +
+                        0.05 * (~scan & trans) +
+                        0.4  * (scan & ~trans) +
+                        0.4  * (scan & trans);
+factor j(trans, exe) = 0.50 * (~trans & ~exe) +
+                       0.05 * (~trans & exe) +
+                       0.15 * (trans & ~exe) +
+                       0.30 * (trans & exe);
+factor k(inf, svc) = 0.35 * (~inf & ~svc) +
+                     0.05 * (~inf & svc) +
+                     0.10 * (inf & ~svc) +
+                     0.50 * (inf & svc);
+factor l(exe, svc) = 0.50 * (~exe & ~svc) +
+                     0.15 * (~exe & svc) +
+                     0.02 * (exe & ~svc) +
+                     0.33 * (exe & svc);
+factor m(svc, dns) = 0.52 * (~svc & ~dns) +
+                     0.00 * (~svc & dns) +
+                     0.10 * (svc & ~dns) +
+                     0.38 * (svc & dns);
+
+factor set(x) = x
+factor unset(x) = ~x
+
+app f(inf);
+app g(inf, scan);
+app h(inf, trans);
+app i(scan, trans);
+app j(trans, exe);
+app k(inf, svc);
+app l(exe, svc);
+app m(svc, dns);
+
+app set(scan);
+app set(trans);

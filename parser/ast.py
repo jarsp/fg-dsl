@@ -57,7 +57,13 @@ class FGOp(FGExp):
         'sub': ('-', 2, lambda a, b: a - b),
         'mul': ('*', 2, lambda a, b: a * b),
         'div': ('/', 2, lambda a, b: a / b),
-        'pow': ('^', 2, lambda a, b: a ** b)
+        'pow': ('**', 2, lambda a, b: a ** b),
+
+        # Floating point ops
+        'not': ('~', 1, lambda a: 1.0 - a),
+        'and': ('&', 2, lambda a, b: a * b),
+        'xor': ('^', 2, lambda a, b: (a + b) % 2),
+        'or' : ('|', 2, lambda a, b: (a + b + a * b) % 2)
     }
 
     def __init__(self, opname:str, args:List['FGExp']) -> None:

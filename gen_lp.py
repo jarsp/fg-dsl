@@ -48,18 +48,14 @@ def gen_lp(mod:FGModule) -> Model:
 
         # Calculate part of objective
         fdef = mod.defs[app.name]
-        with np.errstate(divide='raise'):
-            try:
-                coeffs = {t: np.log(fdef(*t))
-                          for t in itertools.product((0.0, 1.0),
-                                                     repeat=len(app.args))}
-            except FloatingPointError:
-                raise DegenFGError('Factor is bad or evaluates to 0')
+        coeffs = {t: np.nan_to_num(np.log(fdef(*t)))
+                  for t in itertools.product((0.0, 1.0),
+                                             repeat=len(app.args))}
         obj += ivv.prod(coeffs)
 
     # Set objective
     m.update()
-    m.setObjective(obj, GRB.MINIMIZE)
+    m.setObjective(obj, GRB.MAXIMIZE)
     m.update()
 
     return vs1, m
